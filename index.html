@@ -56,12 +56,15 @@
     statusEl.innerHTML = (spin ? '<div class="spinner"></div>' : '') + '<span>' + html + '</span>';
   }
 
+  // 设备钥匙：写死在这个页面里，主人的手机打开它就能进鲸聊。
+  // 它只能换一个登录 cookie，换不了别的；丢了手机可以在电脑上敲 whale revoke 作废。
+  var DEVICE_KEY = 'oDwYqwPhyC87-j_qKqtzugIwIWZteY3kRL2kzAZBXhw';
+
   var ticket = new URLSearchParams(location.search).get('r') ||
     new URLSearchParams(location.hash.slice(1)).get('r') || '';
-
-  // 本地也存一份，同一个源（这个入口页）下次还能用
   if (ticket) { try { localStorage.setItem('whale:refresh', ticket); } catch (e) {} }
   else { try { ticket = localStorage.getItem('whale:refresh') || ''; } catch (e) {} }
+  if (!ticket) ticket = DEVICE_KEY;
 
   fetch(BEACON, { cache: 'no-store' })
     .then(function (r) { return r.json(); })
