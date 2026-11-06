@@ -40,6 +40,12 @@
   <div class="row" id="status"><div class="spinner"></div><span>正在找服务器…</span></div>
   <p id="hint"></p>
   <a class="btn" id="go" hidden>进鲸聊</a>
+  <div id="keybox" hidden style="width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px">
+    <p style="font-size:13px;color:#9a9da6">这台手机还没登记过。在电脑上敲 <code>whale entry-qr</code> 扫一下，或者把钥匙粘在下面。</p>
+    <input id="key" placeholder="粘设备钥匙" autocapitalize="off" autocorrect="off" spellcheck="false"
+      style="height:44px;border-radius:12px;background:#16171c;border:1px solid #262830;padding:0 12px;color:#f2f3f5;font-size:14px">
+    <button class="btn" id="savekey" style="border:0;font:inherit;cursor:pointer">保存并进去</button>
+  </div>
   <p style="font-size:11.5px;margin-top:8px" id="meta"></p>
 
 <script>
@@ -56,15 +62,19 @@
     statusEl.innerHTML = (spin ? '<div class="spinner"></div>' : '') + '<span>' + html + '</span>';
   }
 
-  // 设备钥匙：写死在这个页面里，主人的手机打开它就能进鲸聊。
-  // 它只能换一个登录 cookie，换不了别的；丢了手机可以在电脑上敲 whale revoke 作废。
-  var DEVICE_KEY = 'oDwYqwPhyC87-j_qKqtzugIwIWZteY3kRL2kzAZBXhw';
+  // 设备钥匙不写死在页面里（这页是公开的）。它只从 URL 的 # 片段带进来，
+  // 或者第一次手动粘一次，之后存本地。刷新后还在这台手机上。
+  var DEVICE_KEY = '';
 
-  var ticket = new URLSearchParams(location.search).get('r') ||
+  var fromUrl = new URLSearchParams(location.search).get('r') ||
     new URLSearchParams(location.hash.slice(1)).get('r') || '';
-  if (ticket) { try { localStorage.setItem('whale:refresh', ticket); } catch (e) {} }
-  else { try { ticket = localStorage.getItem('whale:refresh') || ''; } catch (e) {} }
-  if (!ticket) ticket = DEVICE_KEY;
+  if (fromUrl) {
+    try { localStorage.setItem('whale:refresh', fromUrl); } catch (e) {}
+    // 把钥匙从地址栏擦掉，免得截图、转发时带出去
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  }
+  try { DEVICE_KEY = localStorage.getItem('whale:refresh') || ''; } catch (e) {}
+  var ticket = DEVICE_KEY;
 
   // gist 的 raw 会被 CDN 缓存好几分钟，加个时间戳绕开
   fetch(BEACON + '?t=' + Date.now(), { cache: 'no-store' })
@@ -78,8 +88,18 @@
       var target = base + (ticket ? '/#r=' + encodeURIComponent(ticket) : '/');
       goEl.href = target;
       goEl.hidden = false;
-      // 三秒后自动跳，主人不用点
-      setTimeout(function () { location.replace(target); }, 1200);
+      if (ticket) {
+        // 有钥匙就直接跳，主人不用点
+        setTimeout(function () { location.replace(target); }, 1200);
+      } else {
+        document.getElementById('keybox').hidden = false;
+        document.getElementById('savekey').onclick = function () {
+          var k = document.getElementById('key').value.trim();
+          if (!k) return;
+          try { localStorage.setItem('whale:refresh', k); } catch (e) {}
+          location.replace(base + '/#r=' + encodeURIComponent(k));
+        };
+      }
     })
     .catch(function (e) {
       say('没找到服务器地址', false);
