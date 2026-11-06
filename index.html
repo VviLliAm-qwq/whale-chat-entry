@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0c0f">
+<title>鲸聊</title>
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/VviLliAm-qwq/whale-chat-entry/main/icon.png">
+<style>
+  :root { color-scheme: dark }
+  * { box-sizing: border-box; margin: 0; padding: 0 }
+  body {
+    min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px; padding: 32px;
+    background: #0b0c0f; color: #f2f3f5; font-family: Inter, "Noto Sans CJK SC", system-ui, sans-serif;
+    text-align: center;
+  }
+  .mark { width: 96px; height: 96px; border-radius: 50%; background: linear-gradient(160deg, #7ee4c9, #17a085); display: grid; place-items: center }
+  .mark svg { width: 56px; height: 56px }
+  h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em }
+  p { font-size: 14px; color: #9a9da6; line-height: 1.6; max-width: 340px }
+  a.btn {
+    display: inline-block; margin-top: 8px; padding: 13px 28px; border-radius: 14px;
+    background: #f2f3f5; color: #0b0c0f; text-decoration: none; font-weight: 600; font-size: 15px;
+  }
+  a.btn[hidden] { display: none }
+  .spinner { width: 18px; height: 18px; border: 2px solid #2a2c33; border-top-color: #4fd1b0; border-radius: 50%; animation: spin .8s linear infinite }
+  @keyframes spin { to { transform: rotate(360deg) } }
+  .row { display: flex; align-items: center; gap: 9px; font-size: 13px; color: #6b6e78 }
+  code { font-family: ui-monospace, monospace; font-size: 12px; color: #9a9da6; word-break: break-all }
+</style>
+</head>
+<body>
+  <div class="mark">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15 15">
+      <path fill="rgba(255,255,255,.94)" d="M13.63 14.99C13.48 10.6 8.93 6.66 8.71 6.45C8.49 6.25 8.28 5.81 8.43 5.28L9.52 1.66C9.71 1.1 9.61 0.35 9.35 0.12C9.2 0 8.87 -0.09 8.65 0.15L5.71 3.51C5.06 4.2 5.61 4.94 5.59 4.94C4.59 4.57 3.41 4.82 2.7 5.12L0.27 6.36C0.03 6.46 -0.07 6.77 0.06 6.97C0.45 7.63 1.79 7.63 4.58 7.32C9.09 6.83 9.1 14.08 9.09 14.99C10.78 15 11.78 15 13.63 14.99Z"/>
+    </svg>
+  </div>
+  <h1>鲸聊</h1>
+  <div class="row" id="status"><div class="spinner"></div><span>正在找服务器…</span></div>
+  <p id="hint"></p>
+  <a class="btn" id="go" hidden>进鲸聊</a>
+  <p style="font-size:11.5px;margin-top:8px" id="meta"></p>
+
+<script>
+(function () {
+  // 这个页面永远在同一个地址，服务器换域名它不变。
+  // 每次打开先去信标读当前地址，再把手机里存的登录券带过去。
+  var BEACON = 'https://gist.githubusercontent.com/VviLliAm-qwq/d62e4ad624b2f3fbd9314d23ee6879c3/raw/beacon.json';
+  var statusEl = document.getElementById('status');
+  var hintEl = document.getElementById('hint');
+  var goEl = document.getElementById('go');
+  var metaEl = document.getElementById('meta');
+
+  function say(html, spin) {
+    statusEl.innerHTML = (spin ? '<div class="spinner"></div>' : '') + '<span>' + html + '</span>';
+  }
+
+  var ticket = new URLSearchParams(location.search).get('r') ||
+    new URLSearchParams(location.hash.slice(1)).get('r') || '';
+
+  // 本地也存一份，同一个源（这个入口页）下次还能用
+  if (ticket) { try { localStorage.setItem('whale:refresh', ticket); } catch (e) {} }
+  else { try { ticket = localStorage.getItem('whale:refresh') || ''; } catch (e) {} }
+
+  fetch(BEACON, { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (!data || !data.url) throw new Error('信标是空的');
+      var base = data.url.replace(/\/+$/, '');
+      say('找到了', false);
+      hintEl.textContent = '服务器地址：' + base;
+      metaEl.textContent = '更新于 ' + (data.updated || '未知');
+      var target = base + (ticket ? '/#r=' + encodeURIComponent(ticket) : '/');
+      goEl.href = target;
+      goEl.hidden = false;
+      // 三秒后自动跳，主人不用点
+      setTimeout(function () { location.replace(target); }, 1200);
+    })
+    .catch(function (e) {
+      say('没找到服务器地址', false);
+      hintEl.innerHTML = '信标读不到：' + (e && e.message ? e.message : '网络问题') +
+        '<br><br>在电脑上敲 <code>whale beacon</code> 能看到当前地址。';
+    });
+})();
+</script>
+</body>
+</html>
